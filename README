@@ -1,0 +1,8 @@
+Comment compiler le programme :
+    ~$ make
+
+Comment lancer le programme :
+    ~$ ./gpt
+
+Penser à nettoyer avant de partir :
+    ~$ make clean
