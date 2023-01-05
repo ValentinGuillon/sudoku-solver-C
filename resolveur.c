@@ -1,14 +1,18 @@
 
 
 #include <stdio.h>
+#include <unistd.h>
 #include "include/libgestion-de-fichiers.h"
 
 #define N 9
 
 int GRILLE[N][N];
+int MONTRER_PROCESSUS; //bool
 
 int sans_conflit(int ligne, int colonne, int numero);
 int resoudre_sudoku(int ligne, int colonne);
+void afficher_grille(void);
+void afficher_grille2(int soduko[N][N]);
 
 
 
@@ -21,18 +25,21 @@ int main(void) {
     // choix de la difficulté
     int difficulte;
 
-    printf("Difficulté ? (1 à 3)\n");
+    printf("Difficulté ? (1 à 3) (0 pour test)\n");
 
     do {
         printf(">");
         scanf("%d", &difficulte);
-    } while (difficulte < 1 || difficulte > 3);
+    } while (difficulte < 0 || difficulte > 3);
 
 
     // chargement du fichier en fonction de la difficulté
     char *nom_de_fichier = NULL;
 
     switch (difficulte) {
+        case 0:
+            nom_de_fichier = "fichiers-de-sauvegardes/test.txt";
+            break;
         case 1:
             nom_de_fichier = "fichiers-de-sauvegardes/sudoku_facile.txt";
             break;
@@ -74,33 +81,25 @@ int main(void) {
     // }
 
 
+    //montrer le processus ?
+    char input;
+    printf("Afficher le processus de résolution ? (y/n) (!!! ça peut être tèèès long)\n>");
+    scanf("%1s", &input);
+    if (input == 'y')
+        MONTRER_PROCESSUS = 1;
+    else
+        MONTRER_PROCESSUS = 0;
+
+
 
     // RÉSOLUTION DU SUDOKU
     if (resoudre_sudoku(0, 0))
-    {
-        // Print the solution
-        for (int i = 0; i < N; i++)
-        {
-            for (int j = 0; j < N; j++)
-                printf("%d ", GRILLE[i][j]);
-            printf("\n");
-        }
-    }
+        printf("Solution trouvée\n");
     else
-    {
         printf("Aucune solution trouvée\n");
-        // Print the grid
-        for (int i = 0; i < N; i++)
-        {
-            for (int j = 0; j < N; j++) {
-                if (GRILLE[i][j] == 0)
-                    printf("_ ");
-                else
-                    printf("%d ", GRILLE[i][j]);
-            }
-            printf("\n");
-        }
-    }
+
+    // afficher_grille();
+    afficher_grille2(GRILLE);
 
     return 0;
 }
@@ -124,8 +123,7 @@ int main(void) {
 
 
 // Check if the current position is safe
-int sans_conflit(int ligne, int colonne, int numero)
-{
+int sans_conflit(int ligne, int colonne, int numero) {
     // Check if 'numero' is not already placed in current ligne, current column and current 3x3 subgrid
     for (int i = 0; i < N; i++)
         if (GRILLE[ligne][i] == numero || GRILLE[i][colonne] == numero)
@@ -141,30 +139,55 @@ int sans_conflit(int ligne, int colonne, int numero)
     return 1;
 }
 
-// Solve the Sudoku puzzle using backtracking
-int resoudre_sudoku(int ligne, int colonne)
-{
-    // If all cells are filled, the puzzle is solved
-    if (ligne == N - 1 && colonne == N)
+
+
+// résolution du sudoku en utilisant la méthode de backtracking
+// on parcours la grille, case par case, dans le sens de lecture
+int resoudre_sudoku(int ligne, int colonne) {
+    // si on atteint la dernière ligne, et la dernière colonne (+1), le sudoku est résolu
+    if (ligne == N)
         return 1;
 
-    // Move to the next cell if the current cell is already filled
-    if (GRILLE[ligne][colonne] != 0)
-        return resoudre_sudoku(colonne == N - 1 ? ligne + 1 : ligne, (colonne + 1) % N);
+    // on pase à la case suivante si la case est pleine
+    if (GRILLE[ligne][colonne] != 0) {
+        // return resoudre_sudoku(colonne == N - 1 ? ligne + 1 : ligne, (colonne + 1) % N);
+        if (colonne == N - 1)
+            return resoudre_sudoku(ligne + 1, (colonne + 1) % N);
+        else
+            return resoudre_sudoku(ligne, (colonne + 1) % N);
+    }
+    
 
-    // Try placing all numbers from 1 to 9 in the current cell
-    for (int numero = 1; numero <= N; numero++)
-    {
-        // Check if it is safe to place 'numero' in the current cell
-        if (sans_conflit(ligne, colonne, numero))
-        {
+    if (MONTRER_PROCESSUS) {
+        usleep(50 * 1000);
+        afficher_grille();
+    }
+
+    // on essaye tous les nombres de 1 à 9
+    for (int numero = 1; numero <= N; numero++) {
+        // on vérifie qu'il n'y a pas de conflit
+        if (sans_conflit(ligne, colonne, numero)) {
             GRILLE[ligne][colonne] = numero;
 
-            // Solve the rest of the puzzle
-            if (resoudre_sudoku(colonne == N - 1 ? ligne + 1 : ligne, (colonne + 1) % N))
+            // on passe à la case suivante
+            int resolu = 0;
+
+            if (colonne == N - 1)
+                resolu = resoudre_sudoku(ligne + 1, (colonne + 1) % N);
+            else
+                resolu = resoudre_sudoku(ligne, (colonne + 1) % N);
+
+            if (resolu)
                 return 1;
 
-            // Backtrack if the puzzle cannot be solved
+
+
+            // if (resoudre_sudoku(colonne == N - 1 ? ligne + 1 : ligne, (colonne + 1) % N))
+            //     return 1;
+
+
+
+            // on vide la case s'il y'a eu conflit par le suite
             GRILLE[ligne][colonne] = 0;
         }
     }
@@ -175,5 +198,32 @@ int resoudre_sudoku(int ligne, int colonne)
 
 
 
+void afficher_grille(void){
+    printf("\n");
+    for (int i = 0; i < N; i++)
+    {
+        for (int j = 0; j < N; j++) {
+            if (GRILLE[i][j] == 0)
+                printf("_ ");
+            else
+                printf("%d ", GRILLE[i][j]);
+        }
+        printf("\n");
+    }
+}
 
+void afficher_grille2(int sudoku[N][N]) {
+    printf("\n1 2 3     4 5 6     7 8 9\n\n"); // Affichage numéro de colonne
+    int k = 1; // Compteur pour le numéro de ligne
+    
+    for (int i = 0 ; i<N; i++){
+        for (int j = 0 ; j < N; j++){
+            printf(((j+1)%3) ? "%d " : "%d  |  ", sudoku[i][j]); // Si J+1 / 3 == 0, alors mettre un espace après la valeur sinon, un espace + |
+            if (j == 8){ printf("%d", k++);} // Séparation visuelle en 3
+            if ((i == 2 || i == 5) && (j == 8)  ){ printf("\n____________________________\n");}
+            
+        }
+        printf("\n");
+    }
+}
 
