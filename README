@@ -2,7 +2,7 @@ Comment compiler le programme :
     ~$ make
 
 Comment lancer le programme :
-    ~$ ./gpt
+    ~$ ./resolveur
 
 Penser à nettoyer avant de partir :
     ~$ make clean
