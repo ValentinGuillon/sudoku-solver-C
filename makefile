@@ -3,7 +3,7 @@ LIBFLAGS = -I ./include -L ./src -l #penser à ajouter le nom de la lib en utili
 LIBS = objects gestion-de-fichiers
 
 
-all: $(LIBS) gpt
+all: $(LIBS) resolveur
 
 
 #-----CREATION LIB
@@ -16,10 +16,10 @@ gestion-de-fichiers: libgestion-de-fichiers.o
 
 
 
-gpt: solver-by-chat-gpt.c
-	gcc $(CFLAGS) solver-by-chat-gpt.c $(LIBFLAGS) gestion-de-fichiers -o gpt
+resolveur: resolveur.c
+	gcc $(CFLAGS) resolveur.c $(LIBFLAGS) gestion-de-fichiers -o resolveur
 
 
 clean:
 	rm src/libgestion-de-fichiers.a
-	rm gpt
+	rm resolveur
