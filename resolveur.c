@@ -13,6 +13,8 @@ int MONTRER_PROCESSUS = 0; //0 = non, 1 = case par case, 2 = uniquement les solu
 
 
 int sans_conflit(int ligne, int colonne, int numero);
+// int sans_conflit(int sudoku[N][N]); //de Cheïmâa
+// int sans_conflit_voisines(int sudoku[N][N]); //de Cheïmâa
 void resoudre_sudoku(int ligne, int colonne);
 
 void presentation(void);
@@ -157,22 +159,6 @@ int main(void) {
 
 
 
-// Check if the current position is safe
-int sans_conflit(int ligne, int colonne, int numero) {
-    // Check if 'numero' is not already placed in current ligne, current column and current 3x3 subgrid
-    for (int i = 0; i < N; i++)
-        if (GRILLE[ligne][i] == numero || GRILLE[i][colonne] == numero)
-            return 0;
-
-    int startRow = ligne - ligne % 3;
-    int startCol = colonne - colonne % 3;
-    for (int i = startRow; i < startRow + 3; i++)
-        for (int j = startCol; j < startCol + 3; j++)
-            if (GRILLE[i][j] == numero)
-                return 0;
-
-    return 1;
-}
 
 
 
@@ -208,8 +194,12 @@ void resoudre_sudoku(int ligne, int colonne) {
     // on essaye tous les nombres de 1 à 9
     for (int numero = 1; numero <= N; numero++) {
         // on vérifie qu'il n'y a pas de conflit
+
+        // GRILLE[ligne][colonne] = numero;
+        // if (sans_conflit(GRILLE) && sans_conflit_voisines(GRILLE)) {
         if (sans_conflit(ligne, colonne, numero)) {
             GRILLE[ligne][colonne] = numero;
+            
 
             // on passe à la case suivante
             // int resolu = 0;
@@ -227,6 +217,205 @@ void resoudre_sudoku(int ligne, int colonne) {
 
     return;
 }
+
+
+
+
+
+// Check if the current position is safe
+int sans_conflit(int ligne, int colonne, int numero) {
+    // Check if 'numero' is not already placed in current ligne, current column and current 3x3 subgrid
+    for (int i = 0; i < N; i++)
+        if (GRILLE[ligne][i] == numero || GRILLE[i][colonne] == numero)
+            return 0;
+
+    int startRow = ligne - ligne % 3;
+    int startCol = colonne - colonne % 3;
+    for (int i = startRow; i < startRow + 3; i++)
+        for (int j = startCol; j < startCol + 3; j++)
+            if (GRILLE[i][j] == numero)
+                return 0;
+
+    return 1;
+}
+
+
+
+/* 
+* Nous construisons un tableau d'occurrences pour chaque numéro.
+*  Ce tableau d'occurences est remis à 0 à chaque fois qu'on lit une nouvelle ligne.
+*  A la fin de la ligne et donc après avoir renseigné les 9 cases du tableau d'occurrences, on regarde s'il y a des doublons dans la ligne (nombre d'occurrences > 1)
+*  S'il y a des doublons, alors il y a conflit. 
+*  Ensuite nous faisons exactement la même chose pour les colonnes.
+*/
+
+
+// int sans_conflit(int sudoku[N][N]){
+//     int occurrence[N] = {0};
+//     int i, j, o;
+
+
+//     //LIGNES
+//     for (i = 0; i < N; i++) {
+//         for(j = 0; j < N; j++) {
+//             switch(sudoku[i][j]) {
+//                 case 1:
+//                     occurrence[0]++;
+//                     break;
+//                 case 2:
+//                     occurrence[1]++;
+//                     break;
+//                 case 3:
+//                     occurrence[2]++;
+//                     break;
+//                 case 4:
+//                     occurrence[3]++;
+//                     break;
+//                 case 5:
+//                     occurrence[4]++;
+//                     break;
+//                 case 6:
+//                     occurrence[5]++;
+//                     break;
+//                 case 7:
+//                     occurrence[6]++;
+//                     break;
+//                 case 8:
+//                     occurrence[7]++;
+//                     break;
+//                 case 9:
+//                     occurrence[8]++;
+//                     break;
+//                 default:
+//                     break;
+//             }
+//         }
+
+//         for (o = 0; o < N; o++) {
+//                 if (occurrence[o] > 1) {
+//                     // printf("Les règles ne sont pas respectées.\n");
+//                     return 0;
+//                 }
+
+//                 else occurrence[o] = 0;
+//             }
+//         }
+
+
+//     //COLONNES
+//     for (i = 0; i < N; i++) {
+//         for(j = 0; j < N; j++){
+//             switch(sudoku[j][i]){
+//                 case 1:
+//                     occurrence[0]++;
+//                     break;
+//                 case 2:
+//                     occurrence[1]++;
+//                     break;
+//                 case 3:
+//                     occurrence[2]++;
+//                     break;
+//                 case 4:
+//                     occurrence[3]++;
+//                     break;
+//                 case 5:
+//                     occurrence[4]++;
+//                     break;
+//                 case 6:
+//                     occurrence[5]++;
+//                     break;
+//                 case 7:
+//                     occurrence[6]++;
+//                     break;
+//                 case 8:
+//                     occurrence[7]++;
+//                     break;
+//                 case 9:
+//                     occurrence[8]++;
+//                     break;
+//                 default:
+//                     break;
+//             }
+//         }
+
+//         for (o = 0; o < N; o++){
+//                 if (occurrence[o] > 1) {
+//                     // printf("Les règles ne sont pas respectées.\n");
+//                     return 0;
+//                 }
+
+//                 else occurrence[o] = 0;
+//             }
+//         }
+
+//     return 1;
+// }
+
+
+// /* 
+// * Même logique que la précédente fonction
+// * Cette fois-ci k et l sont ajoutés pour faire jump les indices de 3 à chaque itération et ainsi étudier chaque région de 3x3 
+// */
+// int sans_conflit_voisines(int sudoku[N][N]){
+//     int i, j, k, l, o;
+//     int occurrence[N] = {0};
+
+//     for (l = 0; l < 3;l++) {
+//         for(k = 0; k < 3; k++) {
+//             for (i = 3*k; i < 3*(k+1); i++) {
+//                 for(j = 3*l; j < 3*(l+1); j++) {
+//                     switch(sudoku[i][j]) {
+//                         case 1:
+//                             occurrence[0]++;
+//                             break;
+//                         case 2:
+//                             occurrence[1]++;
+//                             break;
+//                         case 3:
+//                             occurrence[2]++;
+//                             break;
+//                         case 4:
+//                             occurrence[3]++;
+//                             break;
+//                         case 5:
+//                             occurrence[4]++;
+//                             break;
+//                         case 6:
+//                             occurrence[5]++;
+//                             break;
+//                         case 7:
+//                             occurrence[6]++;
+//                             break;
+//                         case 8:
+//                             occurrence[7]++;
+//                             break;
+//                         case 9:
+//                             occurrence[8]++;
+//                             break;
+//                         default:
+//                             break;
+//                     }
+//                 }
+//             }
+
+//         /* Après avoir itéré sur une région, il faut maintenant vérifier si une valeur du tableau occurence (de longueur 9) est supérieure à 1, ce qui supposerait qu'une valeur sur la grille apparaît plus d'une fois --> il y a conflit. */
+
+//             for (o = 0;  o < N; o++) {
+//                 if (occurrence[o] > 1) {
+//                     // printf("Les règles ne sont pas respectées.\n");
+//                     return 0;
+//                 }
+
+//                 else occurrence[o] = 0;
+//             }
+//         }
+//     }
+
+//     return 1;
+// }
+
+
+
 
 
 
