@@ -1,25 +1,36 @@
-// Résolveur de grille de Sudoku 9*9
+// Résolveur/Générateur de grille de Sudoku 9*9
 // Par Cheïmâa et Valentin
 
 #include <stdio.h>
 #include <unistd.h> //pour usleep()
 #include "include/libgestion-de-fichiers.h"
+#include <time.h>
+#include <stdlib.h> // pour rand()
 
 #define N 9
 
 int GRILLE[N][N];
-int NOMBRE_DE_SOLUTIONS = 0;
+int grille_temp[N][N];
+
+int NOMBRE_DE_SOLUTIONS = 10;
+int TENTATIVES_DE_GENERATION = 0;
 int MONTRER_PROCESSUS = 0; //0 = non, 1 = case par case, 2 = uniquement les solutions
 
+int liste_nbe[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
 
-int sans_conflit(int ligne, int colonne, int numero);
-// int sans_conflit(int sudoku[N][N]); //de Cheïmâa
-// int sans_conflit_voisines(int sudoku[N][N]); //de Cheïmâa
-void resoudre_sudoku(int ligne, int colonne);
 
-void presentation(void);
+int generer_grille(void);
+void resoudre_grille(int ligne, int colonne);
+
+void initialiser_grille(int soduko[N][N]);
+int sans_conflit(int ligne, int colonne, int chiffre);
+int grille_complete(void);
+
 void afficher_grille(void);
 void afficher_grille2(int soduko[N][N]);
+
+void presentation(void);
+
 
 
 
@@ -28,15 +39,122 @@ void afficher_grille2(int soduko[N][N]);
 
 
 int main(void) {
+    srand(time(0));
+
+
+
+
     presentation();
 
     char input; // 'y' or 'n'
 
-    printf("(y/n) Charger une grille prédéfinie ?\n");
+    printf("(r/g) Souhaitez-vous RÉSOUDRE ou GÉNÉRER une grille Sudoku?\n");
     do {
         printf(">");
         scanf("%1s", &input);
-    } while (input != 'y' && input > 'n');
+    } while (input != 'r' && input != 'g');
+
+
+
+    if (input == 'g') {
+
+        int int_input = 5;
+
+        printf("\n(entre 1 et 80 inclus) Combien de cases souhaitez-vous retirer ?\n");
+        do {
+            printf(">");
+            scanf("%d", &int_input);
+        } while (int_input < 1 && int_input > 80);
+
+        int nb_a_supprimer = int_input;
+
+
+        printf("\n(y/n) Afficher le processus de génération ?\n");
+        do {
+            printf(">");
+            scanf("%1s", &input);
+        } while (input != 'y' && input != 'n');
+
+        if (input == 'y') {
+            MONTRER_PROCESSUS = 1;
+        }
+
+        
+        
+  
+        while (NOMBRE_DE_SOLUTIONS != 1) {
+            TENTATIVES_DE_GENERATION ++;
+            NOMBRE_DE_SOLUTIONS = 0;
+            initialiser_grille(GRILLE);
+            initialiser_grille(grille_temp);
+
+
+            if (! MONTRER_PROCESSUS)
+                printf("Tentative de génération n°%d en cours...\n", TENTATIVES_DE_GENERATION);
+
+
+
+            generer_grille();
+
+            //retrait de certaines cellules
+            int ligne = 0;
+            int colonne = 0;
+            int temp_suppr = nb_a_supprimer;
+            while (temp_suppr) {
+                ligne = rand()% 9;
+                colonne = rand()% 9;
+                if (GRILLE[ligne][colonne]) {
+                    if (MONTRER_PROCESSUS) {
+                        afficher_grille2(GRILLE);
+                        usleep(50 * 1000);
+                    }
+                    GRILLE[ligne][colonne] = 0;
+                    temp_suppr --;
+                }
+            }
+
+            
+
+            //save temp
+            for (int ligne = 0; ligne < N; ligne++) {
+                for (int colonne = 0; colonne < N; colonne++) {
+                    grille_temp[ligne][colonne] = GRILLE[ligne][colonne]; // Copie du tableau 2D sudoku facile dans le tableau 2D global
+                }
+            }
+
+
+            //résoudre
+
+            resoudre_grille(0, 0);
+            // printf("nb solution = %d\n", NOMBRE_DE_SOLUTIONS); //debug
+        }
+
+
+
+        for (int ligne = 0; ligne < N; ligne++) {
+            for (int colonne = 0; colonne < N; colonne++) {
+                GRILLE[ligne][colonne] = grille_temp[ligne][colonne]; // Copie du tableau 2D sudoku facile dans le tableau 2D global
+            }
+        }
+
+
+
+        
+
+        afficher_grille2(GRILLE);
+        // attention aux grilles à solutions multiples
+        printf("\nSudoku généré en %d tentative(s).\n", TENTATIVES_DE_GENERATION);
+        return 0;
+    }
+
+
+    // résoudre
+
+    printf("\n\n(y/n) Charger une grille prédéfinie ?\n");
+    do {
+        printf(">");
+        scanf("%1s", &input);
+    } while (input != 'y' && input != 'n');
 
 
     if (input == 'y') {
@@ -65,7 +183,7 @@ int main(void) {
                 nom_de_fichier = "fichiers-de-sauvegardes/sudoku_moyen.txt";
                 break;
             case 3:
-                nom_de_fichier = "fichiers-de-sauvegardes/sudoku_difficile.txt";
+                nom_de_fichier = "fichiers-de-sauvegardes/sudoku_difficile_errone.txt";
                 break;
             default:
                 return 1;
@@ -84,7 +202,7 @@ int main(void) {
 
         for (int ligne = 0; ligne < N; ligne++) 
             for (int colonne = 0; colonne < N; colonne++) {     
-            GRILLE[ligne][colonne] = grille_chargee[ligne][colonne]; // Copie du tableau 2D sudoku facile dans le tableau 2D global
+                GRILLE[ligne][colonne] = grille_chargee[ligne][colonne]; // Copie du tableau 2D sudoku facile dans le tableau 2D global
         }
     }
 
@@ -107,15 +225,24 @@ int main(void) {
     //on lance la fonction juste pour connaître le nombre de solutions
     printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
     afficher_grille2(GRILLE);
-    resoudre_sudoku(0, 0);
+    NOMBRE_DE_SOLUTIONS = 0;
+    resoudre_grille(0, 0);
+
+    if (! NOMBRE_DE_SOLUTIONS) {
+        printf("\nLa grille ci-dessus n'a aucune solution.\n");
+        return 0;
+    }
+
     printf("\nLa grille ci-dessus à %d solution(s)\n", NOMBRE_DE_SOLUTIONS);
+
+
 
 
 
     //montrer le processus ? case par case ou uniquement les solution ?
     for (int i = 0; i < 2; ++i) {
         if (i == 0)
-            printf("\n(y/n) Afficher le processus de résolution ? (!!! ça peut être tèèès long)\n>");
+            printf("\n(y/n) Afficher le processus de résolution ? (!!! ça peut être trèèès long)\n>");
         else
             if (i == 1 && MONTRER_PROCESSUS == 0)
                 break;
@@ -132,7 +259,7 @@ int main(void) {
     //on relance la fonction s'il faut montrer le processus de résolution
     NOMBRE_DE_SOLUTIONS = 0;
     if (MONTRER_PROCESSUS)
-        resoudre_sudoku(0, 0);
+        resoudre_grille(0, 0);
     else
         return 0;
 
@@ -140,15 +267,6 @@ int main(void) {
     printf("\nFin du processus de résolution\n");
     return 0;
 }
-
-
-/*
- * This code first reads the Sudoku puzzle from the input and then tries to solve it using the backtracking algorithm.
- * The resoudre_sudoku function is a recursive function that tries to place all numbers from 1 to 9 in each empty cell,
- * and then recursively tries to solve the rest of the puzzle.
- * If it reaches a point where it is not possible to place a number in any cell, it backtracks
- */
-
 
 
 
@@ -163,14 +281,13 @@ int main(void) {
 
 
 // résolution du sudoku en utilisant la méthode de backtracking
-// on parcours la grille, case par case, dans le sens de lecture
-void resoudre_sudoku(int ligne, int colonne) {
+void resoudre_grille(int ligne, int colonne) {
     // si on atteint la dernière ligne, et la dernière colonne (+1), le sudoku est résolu
     if (ligne == N) {
         NOMBRE_DE_SOLUTIONS++;
         if (MONTRER_PROCESSUS == 2) {
             printf("\n\nSolution n°%d\n", NOMBRE_DE_SOLUTIONS);
-            afficher_grille();
+            afficher_grille2(GRILLE);
             usleep(1000 * 1000);
         }
         return;
@@ -179,15 +296,15 @@ void resoudre_sudoku(int ligne, int colonne) {
     // on pase à la case suivante si la case est pleine
     if (GRILLE[ligne][colonne] != 0) {
         if (colonne == N - 1)
-            return resoudre_sudoku(ligne + 1, (colonne + 1) % N);
+            return resoudre_grille(ligne + 1, (colonne + 1) % N);
         else
-            return resoudre_sudoku(ligne, (colonne + 1) % N);
+            return resoudre_grille(ligne, (colonne + 1) % N);
     }
     
 
     if (MONTRER_PROCESSUS == 1) {
         printf("\n\n\n\n\n\n\n\n\n\n\n\n\nNombre de solutions trouvées : %d\n", NOMBRE_DE_SOLUTIONS);
-        afficher_grille();
+        afficher_grille2(GRILLE);
         usleep(50 * 1000);
     }
 
@@ -204,10 +321,10 @@ void resoudre_sudoku(int ligne, int colonne) {
             // on passe à la case suivante
             // int resolu = 0;
 
-            if (colonne == N - 1)
-                resoudre_sudoku(ligne + 1, (colonne + 1) % N);
+            if (colonne == N - 1) 
+                resoudre_grille(ligne + 1, (colonne + 1) % N);
             else
-                resoudre_sudoku(ligne, (colonne + 1) % N);
+                resoudre_grille(ligne, (colonne + 1) % N);
 
 
             // on vide la case s'il y'a eu conflit par le suite
@@ -221,19 +338,84 @@ void resoudre_sudoku(int ligne, int colonne) {
 
 
 
+// génération du sudoku en utilisant la méthode de backtracking
+int generer_grille(void) {
+    
+    if (MONTRER_PROCESSUS == 1) {
+        printf("\n\nTentative n°%d\n", TENTATIVES_DE_GENERATION);
+        afficher_grille2(GRILLE);
+        usleep(50 * 1000);
+    }
 
-// Check if the current position is safe
-int sans_conflit(int ligne, int colonne, int numero) {
-    // Check if 'numero' is not already placed in current ligne, current column and current 3x3 subgrid
+    for (int cellule = 0; cellule < 81; cellule++) {
+        int ligne = cellule / 9;
+        int colonne = cellule % 9;
+
+        if (GRILLE[ligne][colonne] == 0) {
+            // mélange de la liste des chiffres
+            for (int i = 0; i < N; i++) {
+                int randomIndex = rand() % 9;
+                int temp = liste_nbe[i];
+                liste_nbe[i] = liste_nbe[randomIndex];
+                liste_nbe[randomIndex] = temp;
+            }
+
+            // parcours de la liste des chiffres
+            for (int i = 0; i < N; i++) {
+                int valeur = liste_nbe[i];
+
+                // s'il n'y a aucun conflit
+                if (sans_conflit(ligne, colonne, valeur)){
+                    GRILLE[ligne][colonne] = valeur;
+
+                    // si la grille est complète, arrêt de la fonction
+                    if (grille_complete())
+                        return 1;
+                    // sinon, rappel de la fonction
+                    else {
+                        if (generer_grille())
+                            return 1;
+                    }
+                }
+            }
+
+            GRILLE[ligne][colonne] = 0;
+            return 0;
+
+        }
+    }
+    
+    return 1;
+}
+
+
+
+
+
+
+
+
+void initialiser_grille(int soduko[N][N]) {
+    for (int ligne = 0; ligne < N; ligne++) {
+        for (int colonne = 0; colonne < N; colonne++)
+            soduko[ligne][colonne] = 0;
+    }
+}
+
+
+
+// Vérifie si la position est corrrecte
+int sans_conflit(int ligne, int colonne, int chiffre) {
+    // Vérifie si 'numero' n'est pas déja sur la ligne, colonne et sous-grille (3x3)
     for (int i = 0; i < N; i++)
-        if (GRILLE[ligne][i] == numero || GRILLE[i][colonne] == numero)
+        if (GRILLE[ligne][i] == chiffre || GRILLE[i][colonne] == chiffre)
             return 0;
 
     int startRow = ligne - ligne % 3;
     int startCol = colonne - colonne % 3;
     for (int i = startRow; i < startRow + 3; i++)
         for (int j = startCol; j < startCol + 3; j++)
-            if (GRILLE[i][j] == numero)
+            if (GRILLE[i][j] == chiffre)
                 return 0;
 
     return 1;
@@ -241,179 +423,19 @@ int sans_conflit(int ligne, int colonne, int numero) {
 
 
 
-/* 
-* Nous construisons un tableau d'occurrences pour chaque numéro.
-*  Ce tableau d'occurences est remis à 0 à chaque fois qu'on lit une nouvelle ligne.
-*  A la fin de la ligne et donc après avoir renseigné les 9 cases du tableau d'occurrences, on regarde s'il y a des doublons dans la ligne (nombre d'occurrences > 1)
-*  S'il y a des doublons, alors il y a conflit. 
-*  Ensuite nous faisons exactement la même chose pour les colonnes.
-*/
 
 
-// int sans_conflit(int sudoku[N][N]){
-//     int occurrence[N] = {0};
-//     int i, j, o;
-
-
-//     //LIGNES
-//     for (i = 0; i < N; i++) {
-//         for(j = 0; j < N; j++) {
-//             switch(sudoku[i][j]) {
-//                 case 1:
-//                     occurrence[0]++;
-//                     break;
-//                 case 2:
-//                     occurrence[1]++;
-//                     break;
-//                 case 3:
-//                     occurrence[2]++;
-//                     break;
-//                 case 4:
-//                     occurrence[3]++;
-//                     break;
-//                 case 5:
-//                     occurrence[4]++;
-//                     break;
-//                 case 6:
-//                     occurrence[5]++;
-//                     break;
-//                 case 7:
-//                     occurrence[6]++;
-//                     break;
-//                 case 8:
-//                     occurrence[7]++;
-//                     break;
-//                 case 9:
-//                     occurrence[8]++;
-//                     break;
-//                 default:
-//                     break;
-//             }
-//         }
-
-//         for (o = 0; o < N; o++) {
-//                 if (occurrence[o] > 1) {
-//                     // printf("Les règles ne sont pas respectées.\n");
-//                     return 0;
-//                 }
-
-//                 else occurrence[o] = 0;
-//             }
-//         }
-
-
-//     //COLONNES
-//     for (i = 0; i < N; i++) {
-//         for(j = 0; j < N; j++){
-//             switch(sudoku[j][i]){
-//                 case 1:
-//                     occurrence[0]++;
-//                     break;
-//                 case 2:
-//                     occurrence[1]++;
-//                     break;
-//                 case 3:
-//                     occurrence[2]++;
-//                     break;
-//                 case 4:
-//                     occurrence[3]++;
-//                     break;
-//                 case 5:
-//                     occurrence[4]++;
-//                     break;
-//                 case 6:
-//                     occurrence[5]++;
-//                     break;
-//                 case 7:
-//                     occurrence[6]++;
-//                     break;
-//                 case 8:
-//                     occurrence[7]++;
-//                     break;
-//                 case 9:
-//                     occurrence[8]++;
-//                     break;
-//                 default:
-//                     break;
-//             }
-//         }
-
-//         for (o = 0; o < N; o++){
-//                 if (occurrence[o] > 1) {
-//                     // printf("Les règles ne sont pas respectées.\n");
-//                     return 0;
-//                 }
-
-//                 else occurrence[o] = 0;
-//             }
-//         }
-
-//     return 1;
-// }
-
-
-// /* 
-// * Même logique que la précédente fonction
-// * Cette fois-ci k et l sont ajoutés pour faire jump les indices de 3 à chaque itération et ainsi étudier chaque région de 3x3 
-// */
-// int sans_conflit_voisines(int sudoku[N][N]){
-//     int i, j, k, l, o;
-//     int occurrence[N] = {0};
-
-//     for (l = 0; l < 3;l++) {
-//         for(k = 0; k < 3; k++) {
-//             for (i = 3*k; i < 3*(k+1); i++) {
-//                 for(j = 3*l; j < 3*(l+1); j++) {
-//                     switch(sudoku[i][j]) {
-//                         case 1:
-//                             occurrence[0]++;
-//                             break;
-//                         case 2:
-//                             occurrence[1]++;
-//                             break;
-//                         case 3:
-//                             occurrence[2]++;
-//                             break;
-//                         case 4:
-//                             occurrence[3]++;
-//                             break;
-//                         case 5:
-//                             occurrence[4]++;
-//                             break;
-//                         case 6:
-//                             occurrence[5]++;
-//                             break;
-//                         case 7:
-//                             occurrence[6]++;
-//                             break;
-//                         case 8:
-//                             occurrence[7]++;
-//                             break;
-//                         case 9:
-//                             occurrence[8]++;
-//                             break;
-//                         default:
-//                             break;
-//                     }
-//                 }
-//             }
-
-//         /* Après avoir itéré sur une région, il faut maintenant vérifier si une valeur du tableau occurence (de longueur 9) est supérieure à 1, ce qui supposerait qu'une valeur sur la grille apparaît plus d'une fois --> il y a conflit. */
-
-//             for (o = 0;  o < N; o++) {
-//                 if (occurrence[o] > 1) {
-//                     // printf("Les règles ne sont pas respectées.\n");
-//                     return 0;
-//                 }
-
-//                 else occurrence[o] = 0;
-//             }
-//         }
-//     }
-
-//     return 1;
-// }
-
+int grille_complete(void) {
+    for (int ligne = 0; ligne < 9; ligne++) {
+        for (int colonne = 0; colonne < 9; colonne++) {
+            if (GRILLE[ligne][colonne] == 0) {
+                return 0;
+            }
+        }
+    }
+    //la grille est complete
+    return 1;
+}
 
 
 
